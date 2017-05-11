@@ -1,46 +1,25 @@
-var gaze = require('gaze');
-var EventEmitter = require('events').EventEmitter;
+var Gaze = require('gaze').Gaze;
 
 module.exports = function(glob, opts, cb) {
-    var out = new EventEmitter();
 
     if (typeof opts === 'function') {
         cb = opts;
         opts = {};
     }
 
-    var watcher = gaze(glob, opts, function(err) {
-        if (err) {
-            out.emit('error', err);
+    var watcher = new Gaze(glob, opts);
+
+    watcher.on('all', function(evt, path) {
+        var outEvt = { type: evt, path: path };
+        this.emit('change', outEvt);
+        if (cb) {
+            cb(outEvt);
         }
-
-        this.on('all', function(evt, path, old) {
-            var outEvt = { type: evt, path: path };
-            if (old) {
-                outEvt.old = old;
-            }
-            out.emit('change', outEvt);
-            if (cb) {
-                cb(outEvt);
-            }
-        });
-
-        this.on('end', out.emit.bind(out, 'end'));
-        this.on('error', out.emit.bind(out, 'error'));
-        this.on('ready', out.emit.bind(out, 'ready'));
-        this.on('nomatch', out.emit.bind(out, 'nomatch'));
     });
 
-    out.end = function() {
+    watcher.end = function() {
         return watcher.close();
     };
-    out.add = function() {
-        return watcher.add.apply(watcher, arguments);
-    };
-    out.remove = function() {
-        return watcher.remove.apply(watcher, arguments);
-    };
-    out._watcher = watcher;
 
-    return out;
+    return watcher;
 };
